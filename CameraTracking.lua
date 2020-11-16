@@ -459,7 +459,7 @@ if Controls then
      print("isum "..isum)
      if Controls.CrosstalkPreset.String == "none" then        m=100   z=100   r=0 --setting the markers way higher so it never gets triggered
      elseif Controls.CrosstalkPreset.String == "slow" then    m=0.4   z=0.55  r=25 
-     elseif Controls.CrosstalkPreset.String == "medium" then  m=0.3   z=0.4   r=18 
+     elseif Controls.CrosstalkPreset.String == "medium" then  m=0.3   z=0.4   r=20 
      elseif Controls.CrosstalkPreset.String == "fast" then    m=0.2   z=0.25  r=10 
      end 
     -- print("test"..m)
