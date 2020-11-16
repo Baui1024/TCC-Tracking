@@ -81,6 +81,7 @@ function GetControls(props)
   table.insert(ctrls,{Name = "CameraRouter",ControlType = "Text",UserPin = true,PinStyle = "Both", Count = 1})
   table.insert(ctrls,{Name = "Camera",ControlType = "Text",UserPin = true,PinStyle = "Both",Count = 10})
   table.insert(ctrls,{Name = "CameraHomePosition",ControlType = "Text",UserPin = true,PinStyle = "Both",Count = 1})
+  table.insert(ctrls,{Name = "CrosstalkPreset",ControlType = "Text",UserPin = true,PinStyle = "Both",DefaultValue="slow",Count = 1})
   for i=1,Inputs do
     table.insert(ctrls,{Name = "Input"..i.."ZoneBoundary",ControlType = "Text",UserPin = true,PinStyle = "Both",Count = 21})
     table.insert(ctrls,{Name = "Input"..i.."ActiveZone",ControlType = "Indicator",IndicatorType = "Led",UserPin = true,PinStyle = "Output",Count = 21})
@@ -111,16 +112,14 @@ function GetControlLayout(props)
   -- layout["ChaosReset"] = {PrettyName = "Chaos Reset",Style = "None"}
   if CurrentPage == "Setup" then
     -- Graphics
-    table.insert(graphics,{Type = "GroupBox",Fill = White,CornerRadius = 0,Position = {0,0},Size = {309,506}})
-    table.insert(graphics,{Type = "GroupBox",Fill = Grey,CornerRadius = 0,Position = {6,23},Size = {296,476}})
+    table.insert(graphics,{Type = "GroupBox",Fill = White,CornerRadius = 0,Position = {0,0},Size = {309,570}})
+    table.insert(graphics,{Type = "GroupBox",Fill = Grey,CornerRadius = 0,Position = {6,23},Size = {296,540}})
     table.insert(graphics,{Type = "Label",Text = "Tracking On/Off",Fill = Clear,Font = "Roboto",FontColor = Text,FontSize = 14,HTextAlign = "Left",Position = {70,35},Size = {120,18}})
     table.insert(graphics,{Type = "Label",Text = "Settings",Fill = Clear,Font = "Roboto",FontColor = Text,FontSize = 18,FontStyle = "Bold",HTextAlign = "Left",Position = {6,0},Size = {204,22}})
-    table.insert(graphics,{Type = "Label",Text = "Version "..PluginInfo.Version,Fill = Clear,Font = "Roboto",FontColor = Text,FontSize = 9,HTextAlign = "Right",Position = {228,487},Size = {73,12}})
+    table.insert(graphics,{Type = "Label",Text = "Version "..PluginInfo.Version,Fill = Clear,Font = "Roboto",FontColor = Text,FontSize = 9,HTextAlign = "Right",Position = {228,550},Size = {73,12}})
     table.insert(graphics,{Type = "Header",Text = "Cameras",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,69},Size = {274,11}})
-    -- Commenting these out to experiment with automating it
-    --table.insert(graphics,{Type = "Header",Text = "Global Home Threshhold",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,279},Size = {274,11}}) --114
-    --table.insert(graphics,{Type = "Header",Text = "Global Home Release",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,355},Size = {274,11}})
     table.insert(graphics,{Type = "Header",Text = "Global Home Position",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,180},Size = {274,11}})
+    table.insert(graphics,{Type = "Header",Text = "Crosstalk Detection",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,500},Size = {274,11}})
     table.insert(graphics,{Type = "Header",Text = "PTZ Switch Delay",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,279},Size = {274,11}})
     table.insert(graphics,{Type = "Header",Text = "Speaker Normalizing",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,355},Size = {274,11}})
     table.insert(graphics,{Type = "Header",Text = "Camera Router",Fill = Text,Font = "Roboto",FontSize = 16,HTextAlignment = "Center",Position = {17,431},Size = {274,11}})
@@ -134,9 +133,8 @@ function GetControlLayout(props)
     layout["PositionTotal"] = {PrettyName = "Settings~Global Home Position",Style = "Text",TextBoxStyle = "Normal",Color = White,Position = {79,201},Size = {153,16}}
     layout["PositionSaveTotal"] = {PrettyName = "Settings~Global Home Save",Style = "Button",ButtonStyle = "Trigger",Legend = "SAVE",CornerRadius = 0,Margin = 1,Position = {99,245},Size = {113,19}}
     layout["CameraHomePosition"] = {PrettyName = "Settings~Global Home Camera", Style = "ComboBox", Fill = White,Font = "Roboto",FontSize = 12,FontColor = Black, Position = {99,223},Size = {113,18}}
-    layout["CameraRouter"] = {PrettyName = "Settings~Camera Router", Style = "ComboBox", Fill = White,Font = "Roboto",FontSize = 12,FontColor = Black, Position = {99,460},Size = {113,18}}    -- Commenting these out to experiment with automating it
-    --layout["GlobalHomeThreshhold"] = {PrettyName = "Settings~Global Home Threshhold",Style = "Fader",Color = Faders,Position = {17,304},Size = {274,36}}
-    --layout["GlobalHomeRelease"] = {PrettyName = "Settings~Global Home Release",Style = "Fader",Color = Faders,Position = {17,380},Size = {274,36}}
+    layout["CameraRouter"] = {PrettyName = "Settings~Camera Router", Style = "ComboBox", Fill = White,Font = "Roboto",FontSize = 12,FontColor = Black, Position = {99,460},Size = {113,18}}    
+    layout["CrosstalkPreset"] = {PrettyName = "Settings~Crosstalk Preset", Style = "ComboBox", Fill = White,Font = "Roboto",FontSize = 12,FontColor = Black, Position = {99,529},Size = {113,18}}    
     layout["PTZDelay"] = {PrettyName = "Settings~PTZ Delay",Style = "Fader",Color = Faders,Position = {17,304},Size = {274,36}}
     layout["SpeakerNormalizing"] = {PrettyName = "Settings~Speaker Normalizing",Style = "Fader",Color = Faders,Position = {17,380},Size = {274,36}}
   elseif CurrentPage:find("Input") then
@@ -303,7 +301,25 @@ if Controls then
       end
     end
   end
-  
+  --Home Position Recall
+  function RecallHomePosition()
+    for c=1,10 do 
+      if Controls["CameraHomePosition"].String == Camselect[c] then 
+        Cam[c].String = Controls["PositionTotal"].String 
+        if Controls["CameraRouter"].String ~="" then CameraRouter.Value = c 
+        end 
+      end
+    end
+  end
+  --Silence Home Position Recall
+  Silence = 0
+  function SilenceHomePositionRecall()
+    if Microphones == 1 then
+      if Silence < 20 then Silence = Silence+1 elseif Silence == 20 then Silence = Silence+1 RecallHomePosition() end   
+      else if Silence < 20*Microphones then Silence = Silence+1 elseif Silence == 20*Microphones then Silence = Silence+1 RecallHomePosition()  end   
+    end 
+  end
+
   --Disabling not used Controls
   ZoneControls = {"ZoneBoundary","ActiveZone","Position","PositionSave","PositionLoad","CameraSelect"}
   
@@ -419,13 +435,16 @@ if Controls then
     oldj = q oldi = p
     end
    end
-   
-   --checking how often the speaking zone switched and select the master camera when threshhold is reacherd
+
+   --Settings for Crosstalk
+   Controls.CrosstalkPreset.Choices = {"none","slow","medium","fast"}
    ChaosTablei = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
    ChaosTablej = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
    xi = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
    xj = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+   cv=0
    function ChaosCalc(i,j)
+   print(cv)
     isum = 0
     jsum = 0
     table.insert(ChaosTablei, 1, i) table.remove(ChaosTablei,22)
@@ -436,50 +455,56 @@ if Controls then
         jsum = jsum + xj[i] 
         isum = isum + xi[i]    
       end 
-     --print("jsum "..jsum) 
-     --print("isum "..isum)
-     local t=0.5
-     local r=15
-    if isum > 10*t or jsum > 21*t 
-    then cv=1 print("CHAOS") for c=1,10 do if Controls["CameraHomePosition"].String == Camselect[c] then Cam[c].String = Controls["PositionTotal"].String if Controls["CameraRouter"].String ~="" then CameraRouter.Value = c end end end
-    else Timer.CallAfter(function() if isum < 10*t and jsum < 21*t then cv=0 end  end, r)
+     print("jsum "..jsum) 
+     print("isum "..isum)
+     if Controls.CrosstalkPreset.String == "none" then        m=100   z=100   r=0 --setting the markers way higher so it never gets triggered
+     elseif Controls.CrosstalkPreset.String == "slow" then    m=0.4   z=0.55  r=25 
+     elseif Controls.CrosstalkPreset.String == "medium" then  m=0.3   z=0.4   r=18 
+     elseif Controls.CrosstalkPreset.String == "fast" then    m=0.2   z=0.25  r=10 
+     end 
+    -- print("test"..m)
+    if isum > 21*m or jsum > 21*z 
+    then cv=1 print("CHAOS") RecallHomePosition() Timer.CallAfter(function() if isum < Microphones*m and jsum < 21*z and cv == 1 then cv=0 end  end, r)
     end
-   end
+   end 
   
   --Function that checks if active TCC Angle is between Zone Borders 
   Polltimer.EventHandler = function() 
     if Controls.TrackingOnOff.Boolean == true and Controls.SpeakersLevelPresent.Boolean == false then farendspeaking=0 
       if Microphones == 1 then 
-        if Controls.MicLevelPresent.Boolean == true then--print(TCC[1].Value) 
-        for j=1,Controls.Zones.Value do if Controls["Input1ZoneBoundary"][j].String ~= "" then
-          if TCC[1].Value >= tonumber(string.sub(Controls["Input1ZoneBoundary"][j].String, 1, string.sub(string.find(Controls["Input1ZoneBoundary"][j].String, "%D"),1,2))) and
-             TCC[1].Value <  tonumber(string.sub(Controls["Input1ZoneBoundary"][j].String, string.sub(string.find(Controls["Input1ZoneBoundary"][j].String, "%D"),1,2))) and
-             1==1 
-             then Zones[1][j] = "true" Presetswitch(1,j) ZoneFeedback(1,j) Normalizing(1,j) ChaosCalc(1,j)
-             else Zones[1][j] = "false"
-             end
-             end
-            end
-          end 
-      else 
-      for i=1,Microphones do 
-        for j=1,Controls.Zones[i].Value do if Controls["Input"..i.."ZoneBoundary"][j].String ~= "" then
-            if Controls.MicLevelPresent[i].Boolean == true then
-                if TCC[i].Value >= tonumber(string.sub(Controls["Input"..i.."ZoneBoundary"][j].String, 1, string.sub(string.find(Controls["Input"..i.."ZoneBoundary"][j].String, "%D"),1,2))) and
-                  TCC[i].Value <  tonumber(string.sub(Controls["Input"..i.."ZoneBoundary"][j].String, string.sub(string.find(Controls["Input"..i.."ZoneBoundary"][j].String, "%D"),1,2))) and
-                 1==1
-                 then Zones[i][j] = "true" Presetswitch(i,j) ZoneFeedback(i,j) Normalizing(i,j) ChaosCalc(i,j)
-                 else Zones[i][j] = "false"
-                 end
+        if Controls.MicLevelPresent.Boolean == true then Silence = 0
+          for j=1,Controls.Zones.Value do 
+            if Controls["Input1ZoneBoundary"][j].String ~= "" then
+              if TCC[1].Value >= tonumber(string.sub(Controls["Input1ZoneBoundary"][j].String, 1, string.sub(string.find(Controls["Input1ZoneBoundary"][j].String, "%D"),1,2))) and
+                TCC[1].Value <  tonumber(string.sub(Controls["Input1ZoneBoundary"][j].String, string.sub(string.find(Controls["Input1ZoneBoundary"][j].String, "%D"),1,2))) and
+                1==1 
+                then Zones[1][j] = "true" Presetswitch(1,j) ZoneFeedback(1,j) Normalizing(1,j) ChaosCalc(1,j)
+                else Zones[1][j] = "false"
               end
             end
           end
-        end  
-      end
+        elseif Controls.MicLevelPresent.Boolean == false then SilenceHomePositionRecall()
+        end 
+      else 
+        for i=1,Microphones do 
+          if Controls.MicLevelPresent[i].Boolean == true then Silence = 0 
+            for j=1,Controls.Zones[i].Value do 
+              if Controls["Input"..i.."ZoneBoundary"][j].String ~= "" then
+                if TCC[i].Value >= tonumber(string.sub(Controls["Input"..i.."ZoneBoundary"][j].String, 1, string.sub(string.find(Controls["Input"..i.."ZoneBoundary"][j].String, "%D"),1,2))) and
+                  TCC[i].Value <  tonumber(string.sub(Controls["Input"..i.."ZoneBoundary"][j].String, string.sub(string.find(Controls["Input"..i.."ZoneBoundary"][j].String, "%D"),1,2))) and
+                  1==1
+                  then Zones[i][j] = "true" Presetswitch(i,j) ZoneFeedback(i,j) Normalizing(i,j) ChaosCalc(i,j)
+                  else Zones[i][j] = "false"
+                end
+              end
+            end 
+          elseif Controls.MicLevelPresent[i].Boolean == false then SilenceHomePositionRecall()
+          end
+        end
+      end  
     elseif Controls.TrackingOnOff.Boolean == true and Controls.SpeakersLevelPresent.Boolean == true then
-      if farendspeaking < 10 then farendspeaking=farendspeaking+1 elseif farendspeaking>=10 then for c=1,10 do if Controls["CameraHomePosition"].String == Camselect[c] then Cam[c].String = Controls["PositionTotal"].String if Controls["CameraRouter"].String ~="" then CameraRouter.Value = c end end end
+      if farendspeaking < 10 then farendspeaking=farendspeaking+1 elseif farendspeaking>=10 then RecallHomePosition() end
     end  --10 times half a second until total position gets triggered. change both 10 against other value for shorter/longer treshhold  
-    end 
   end
   
   --Updates the Controls
